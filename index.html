@@ -23,6 +23,65 @@
     </div>
 
     <script>
+        // Folosim DOAR cheia publică
+        const supabase = supabase.createClient(
+            'https://dvmjuzqozlkhwndjrvuo.supabase.co', 
+            'sb_publishable_4pbrCZ0UERI58_rbaEbNUQ_YDhEv_F7'
+        );
+
+        async function trimiteMesaj() {
+            const input = document.getElementById("messageInput");
+            if (!input.value) return;
+            
+            const { error } = await supabase.from('mesaje').insert({ text: input.value });
+            if (error) console.error("Eroare:", error);
+            else input.value = "";
+        }
+
+        async function incarcaIstoric() {
+            const { data } = await supabase.from('mesaje').select('*').order('created_at', { ascending: true });
+            const chatWindow = document.getElementById("chat-window");
+            chatWindow.innerHTML = "";
+            if (data) {
+                data.forEach(msg => {
+                    chatWindow.innerHTML += `<div class="message">${msg.text}</div>`;
+                });
+            }
+        }
+
+        // Ascultă mesaje noi
+        supabase.channel('mesaje').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mesaje' }, payload => {
+            document.getElementById("chat-window").innerHTML += `<div class="message">${payload.new.text}</div>`;
+        }).subscribe();
+
+        incarcaIstoric();
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <title>ArhiCore Chat</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; height: 100vh; margin: 0; }
+        .chat-container { width: 400px; background: #1a1a1a; border: 2px solid #8a2be2; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; height: 80vh; margin-top: 50px; }
+        h1 { color: #8a2be2; text-align: center; }
+        #chat-window { flex: 1; overflow-y: auto; margin-bottom: 10px; }
+        .message { padding: 8px; border-bottom: 1px solid #333; }
+        input { padding: 10px; border-radius: 5px; border: 1px solid #8a2be2; background: #000; color: #fff; }
+        button { padding: 10px; background: #8a2be2; border: none; color: white; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h1>ArhiCore</h1>
+        <div id="chat-window"></div>
+        <input type="text" id="messageInput" placeholder="Scrie mesaj...">
+        <button onclick="trimiteMesaj()">Trimite</button>
+    </div>
+
+    <script>
         // --- AICI PUI DATELE TALE DE LA SUPABASE ---
         const supabase = supabase.createClient('URL_UL_TAU_SUPABASE', 'CHEIA_TA_PUBLICA');
 
