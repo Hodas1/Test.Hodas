@@ -1,55 +1,110 @@
-/* Reset și stilizare fundal */
-body {
-    margin: 0;
-    padding: 0;
-    background-color: #000000;
-    /* Adăugăm un gradient subtil pentru a nu fi un negru plat */
-    background: radial-gradient(circle at center, #1a0033 0%, #000000 100%);
-    color: #ffffff;
-    font-family: 'Segoe UI', sans-serif;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <title>ArhiCore - Black Mode</title>
+    <style>
+        /* Fundal Negru Total */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000000;
+            color: #d1d1d1; /* Gri deschis, NU alb */
+            font-family: 'Courier New', Courier, monospace;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-/* Stil pentru elemente (Chat, Jocuri) */
-.chat-container, #game-box {
-    background-color: rgba(20, 20, 20, 0.8); /* Ușor transparent */
-    border: 2px solid #8a2be2;
-    border-radius: 15px;
-    box-shadow: 0 0 20px rgba(138, 43, 226, 0.3); /* Efect de glow mov */
-    padding: 20px;
-    margin-bottom: 20px;
-}
+        /* Canvas pentru Hexagoane */
+        #bgCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
 
-/* Butoane și input-uri */
-input {
-    background-color: #000;
-    border: 1px solid #8a2be2;
-    color: #fff;
-    padding: 10px;
-    border-radius: 5px;
-}
+        /* Splash Screen (Ecranul de Start) */
+        #splash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            cursor: pointer;
+        }
 
-button {
-    background-color: #8a2be2;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    padding: 10px 20px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: 0.3s;
-}
+        #splash h1 { color: #8a2be2; border: 1px solid #8a2be2; padding: 20px; }
 
-button:hover {
-    background-color: #a040ff;
-    box-shadow: 0 0 10px #8a2be2;
-}
+        /* Containerul principal (ascuns inițial) */
+        #main-content {
+            display: none;
+            padding: 20px;
+        }
 
-/* Text-ul mov pentru titluri */
-h1, h3 {
-    color: #8a2be2;
-    text-shadow: 0 0 5px rgba(138, 43, 226, 0.5);
-}
+        /* Elemente de UI (Fără alb, doar nuanțe de gri și mov) */
+        .chat-container {
+            width: 400px;
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid #8a2be2;
+            padding: 20px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="bgCanvas"></canvas>
+
+    <div id="splash">
+        <h1>APASĂ SPACE PENTRU A INTRA</h1>
+    </div>
+
+    <div id="main-content">
+        <div class="chat-container">
+            <h2 style="color: #8a2be2;">ArhiCore Terminal</h2>
+            <p>Sistem activat. Pregătit pentru input.</p>
+            </div>
+    </div>
+
+    <script>
+        // 1. Logica pentru Start (Space)
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                document.getElementById('splash').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+            }
+        });
+
+        // 2. Logica pentru Hexagoane pe fundal
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        function drawHexagon(x, y, size) {
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                ctx.lineTo(x + size * Math.cos(i * Math.PI / 3), y + size * Math.sin(i * Math.PI / 3));
+            }
+            ctx.closePath();
+            ctx.strokeStyle = '#2e0059'; // Mov foarte închis pentru fundal
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        // Generare hexagoane random
+        for(let i=0; i<30; i++) {
+            drawHexagon(
+                Math.random() * canvas.width, 
+                Math.random() * canvas.height, 
+                30 + Math.random() * 50
+            );
+        }
+    </script>
+</body>
+</html>
