@@ -3,35 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pagina de Test</title>
+    <title>ArhiCore Chat</title>
     <style>
-        body { 
-            font-family: sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
-            background-color: #f4f4f9; 
+        /* Design Negru și Mov */
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
         }
-        .container { text-align: center; padding: 20px; border: 2px solid #333; border-radius: 10px; background: white; }
-        button { padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
-        button:hover { background: #0056b3; }
+
+        .chat-container {
+            width: 400px;
+            height: 600px;
+            background-color: #1a1a1a;
+            border: 2px solid #8a2be2; /* Mov */
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 0 0 15px #8a2be2;
+        }
+
+        h1 {
+            text-align: center;
+            color: #8a2be2;
+            margin-top: 0;
+        }
+
+        #chat-window {
+            flex: 1;
+            overflow-y: auto;
+            border-bottom: 1px solid #333;
+            margin-bottom: 15px;
+            padding-right: 10px;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            background-color: #333;
+            border-radius: 8px;
+            word-wrap: break-word;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #8a2be2;
+            background-color: #000;
+            color: #fff;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #8a2be2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #6a1bb6;
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Salut!</h1>
-        <p>Acesta este un test pentru a verifica dacă totul funcționează.</p>
-        <button id="testBtn">Apasă-mă!</button>
+<div class="chat-container">
+    <h1>ArhiCore</h1>
+    <div id="chat-window"></div>
+    <div class="input-area">
+        <input type="text" id="messageInput" placeholder="Scrie ceva...">
+        <button onclick="sendMessage()">Trimite</button>
     </div>
+</div>
 
-    <script>
-        document.getElementById('testBtn').addEventListener('click', () => {
-            alert('Codul funcționează perfect!');
-        });
-    </script>
+<script>
+    function sendMessage() {
+        const input = document.getElementById("messageInput");
+        const chatWindow = document.getElementById("chat-window");
+
+        if (input.value.trim() !== "") {
+            const messageDiv = document.createElement("div");
+            messageDiv.className = "message";
+            messageDiv.textContent = input.value;
+            chatWindow.appendChild(messageDiv);
+            
+            // Curăță input-ul și scroll jos
+            input.value = "";
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+    }
+
+    // Permite trimiterea cu tasta Enter
+    document.getElementById("messageInput").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            sendMessage();
+        }
+    });
+</script>
 
 </body>
 </html>
