@@ -2,119 +2,67 @@
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ArhiCore Chat</title>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+        // --- AICI TREBUIE SA PUI CONFIGURAREA TA ---
+        const firebaseConfig = {
+            apiKey: "AIza...",
+            authDomain: "arhi-core-chat.firebaseapp.com",
+            projectId: "arhi-core-chat",
+            storageBucket: "arhi-core-chat.appspot.com",
+            messagingSenderId: "...",
+            appId: "..."
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Functie trimitere
+        window.sendMessage = async () => {
+            const input = document.getElementById("messageInput");
+            if (input.value.trim() !== "") {
+                await addDoc(collection(db, "messages"), {
+                    text: input.value,
+                    createdAt: serverTimestamp()
+                });
+                input.value = "";
+            }
+        };
+
+        // Asculta mesajele in timp real
+        const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
+        onSnapshot(q, (snapshot) => {
+            const chatWindow = document.getElementById("chat-window");
+            chatWindow.innerHTML = ""; // Curata ecranul
+            snapshot.forEach((doc) => {
+                const msg = doc.data();
+                const div = document.createElement("div");
+                div.className = "message";
+                div.textContent = msg.text;
+                chatWindow.appendChild(div);
+            });
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        });
+    </script>
     <style>
-        /* Design Negru și Mov */
-        body {
-            background-color: #000000;
-            color: #ffffff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-
-        .chat-container {
-            width: 400px;
-            height: 600px;
-            background-color: #1a1a1a;
-            border: 2px solid #8a2be2; /* Mov */
-            border-radius: 15px;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            box-shadow: 0 0 15px #8a2be2;
-        }
-
-        h1 {
-            text-align: center;
-            color: #8a2be2;
-            margin-top: 0;
-        }
-
-        #chat-window {
-            flex: 1;
-            overflow-y: auto;
-            border-bottom: 1px solid #333;
-            margin-bottom: 15px;
-            padding-right: 10px;
-        }
-
-        .message {
-            margin-bottom: 10px;
-            padding: 8px;
-            background-color: #333;
-            border-radius: 8px;
-            word-wrap: break-word;
-        }
-
-        .input-area {
-            display: flex;
-            gap: 10px;
-        }
-
-        input {
-            flex: 1;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #8a2be2;
-            background-color: #000;
-            color: #fff;
-        }
-
-        button {
-            padding: 10px 20px;
-            background-color: #8a2be2;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        button:hover {
-            background-color: #6a1bb6;
-        }
+        body { background-color: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; height: 100vh; margin: 0; }
+        .chat-container { width: 400px; background: #1a1a1a; border: 2px solid #8a2be2; border-radius: 15px; display: flex; flex-direction: column; padding: 20px; height: 80vh; margin-top: 50px; }
+        h1 { text-align: center; color: #8a2be2; }
+        #chat-window { flex: 1; overflow-y: auto; margin-bottom: 10px; border-bottom: 1px solid #333; }
+        .message { margin-bottom: 10px; padding: 8px; background: #333; border-radius: 8px; }
+        input { padding: 10px; border-radius: 5px; border: 1px solid #8a2be2; background: #000; color: #fff; }
+        button { padding: 10px; background: #8a2be2; border: none; color: white; cursor: pointer; border-radius: 5px; }
     </style>
 </head>
 <body>
-
-<div class="chat-container">
-    <h1>ArhiCore</h1>
-    <div id="chat-window"></div>
-    <div class="input-area">
-        <input type="text" id="messageInput" placeholder="Scrie ceva...">
+    <div class="chat-container">
+        <h1>ArhiCore</h1>
+        <div id="chat-window"></div>
+        <input type="text" id="messageInput" placeholder="Mesajul tau...">
         <button onclick="sendMessage()">Trimite</button>
     </div>
-</div>
-
-<script>
-    function sendMessage() {
-        const input = document.getElementById("messageInput");
-        const chatWindow = document.getElementById("chat-window");
-
-        if (input.value.trim() !== "") {
-            const messageDiv = document.createElement("div");
-            messageDiv.className = "message";
-            messageDiv.textContent = input.value;
-            chatWindow.appendChild(messageDiv);
-            
-            // Curăță input-ul și scroll jos
-            input.value = "";
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-        }
-    }
-
-    // Permite trimiterea cu tasta Enter
-    document.getElementById("messageInput").addEventListener("keypress", function(event) {
-        if (event.key === "Enter") {
-            sendMessage();
-        }
-    });
-</script>
-
 </body>
 </html>
