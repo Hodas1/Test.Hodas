@@ -2,58 +2,90 @@
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <title>ArhiCore - Black Mode</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArhiCore - Protocol Black</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* Fundal Negru Total */
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #000000;
-            color: #d1d1d1; /* Gri deschis, NU alb */
+        /* CONFIGURAȚIE VIZUALĂ: ZERO ALB */
+        :root {
+            --bg-color: #000000;
+            --primary-purple: #8a2be2;
+            --dark-purple: #2e0059;
+            --text-gray: #a1a1a1; /* Gri stins în loc de alb */
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-gray);
             font-family: 'Courier New', Courier, monospace;
-            height: 100vh;
-            overflow: hidden;
+            height: 100vh; overflow: hidden;
         }
 
-        /* Canvas pentru Hexagoane */
         #bgCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: -1;
+            position: fixed; top: 0; left: 0; z-index: -1;
         }
 
-        /* Splash Screen (Ecranul de Start) */
+        /* ECRAN START */
         #splash {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            cursor: pointer;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 1000;
+        }
+        #splash h1 {
+            color: var(--primary-purple);
+            border: 2px solid var(--primary-purple);
+            padding: 20px; text-transform: uppercase;
+            letter-spacing: 5px; animation: pulse 2s infinite;
         }
 
-        #splash h1 { color: #8a2be2; border: 1px solid #8a2be2; padding: 20px; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 5px var(--primary-purple); }
+            50% { box-shadow: 0 0 25px var(--primary-purple); }
+            100% { box-shadow: 0 0 5px var(--primary-purple); }
+        }
 
-        /* Containerul principal (ascuns inițial) */
+        /* CONȚINUT PRINCIPAL */
         #main-content {
-            display: none;
-            padding: 20px;
+            display: none; height: 100vh;
+            flex-direction: column; align-items: center;
+            padding: 20px; overflow-y: auto;
         }
 
-        /* Elemente de UI (Fără alb, doar nuanțe de gri și mov) */
-        .chat-container {
-            width: 400px;
+        .container {
+            width: 90%; max-width: 500px;
             background: rgba(10, 10, 10, 0.9);
-            border: 1px solid #8a2be2;
-            padding: 20px;
-            margin: 0 auto;
+            border: 1px solid var(--primary-purple);
+            padding: 20px; margin-bottom: 20px;
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.2);
         }
+
+        /* CHAT STYLE */
+        #chat-window {
+            height: 200px; overflow-y: auto;
+            border-bottom: 1px solid var(--dark-purple);
+            margin-bottom: 10px; padding: 5px;
+        }
+        .msg { border-left: 2px solid var(--primary-purple); padding-left: 8px; margin-bottom: 8px; }
+        input {
+            width: 70%; background: #000; border: 1px solid var(--dark-purple);
+            color: var(--primary-purple); padding: 10px;
+        }
+        button {
+            background: var(--primary-purple); border: none;
+            color: #000; padding: 10px; font-weight: bold; cursor: pointer;
+        }
+
+        /* DINO GAME STYLE */
+        #game {
+            width: 100%; height: 150px; border: 1px solid var(--dark-purple);
+            position: relative; overflow: hidden; background: #050505;
+        }
+        #dino { width: 30px; height: 30px; background: var(--primary-purple); position: absolute; bottom: 0; left: 20px; }
+        #cactus { width: 15px; height: 30px; background: var(--text-gray); position: absolute; bottom: 0; left: 100%; }
+        .jump-animation { animation: jump 0.5s linear; }
+        @keyframes jump { 0%, 100% { bottom: 0; } 50% { bottom: 80px; } }
+        @keyframes moveCactus { from { left: 100%; } to { left: -20px; } }
     </style>
 </head>
 <body>
@@ -61,49 +93,103 @@
     <canvas id="bgCanvas"></canvas>
 
     <div id="splash">
-        <h1>APASĂ SPACE PENTRU A INTRA</h1>
+        <h1>ArhiCore</h1>
+        <p style="color: var(--primary-purple);">APASĂ [ SPACE ] PENTRU ACTIVARE</p>
     </div>
 
     <div id="main-content">
-        <div class="chat-container">
-            <h2 style="color: #8a2be2;">ArhiCore Terminal</h2>
-            <p>Sistem activat. Pregătit pentru input.</p>
+        <div class="container">
+            <h2 style="color: var(--primary-purple); margin-top:0;">Terminal Chat</h2>
+            <div id="chat-window"></div>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="msgInput" placeholder="Mesaj...">
+                <button onclick="sendMsg()">TRIMITE</button>
             </div>
+        </div>
+
+        <div class="container">
+            <h2 style="color: var(--primary-purple); margin-top:0;">ArhiDino</h2>
+            <p style="font-size: 10px;">Click pe zona de joc pentru Salt</p>
+            <div id="game" onclick="dinoJump()">
+                <div id="dino"></div>
+                <div id="cactus"></div>
+            </div>
+        </div>
     </div>
 
     <script>
-        // 1. Logica pentru Start (Space)
+        // --- 1. SUPABASE CONFIG ---
+        const _URL = 'https://dvmjuzqozlkhwndjrvuo.supabase.co';
+        const _KEY = 'sb_publishable_4pbrCZ0UERI58_rbaEbNUQ_YDhEv_F7';
+        const supabase = supabase.createClient(_URL, _KEY);
+
+        // --- 2. START LOGIC (SPACE) ---
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
+            if (e.code === 'Space' && document.getElementById('splash').style.display !== 'none') {
                 document.getElementById('splash').style.display = 'none';
-                document.getElementById('main-content').style.display = 'block';
+                document.getElementById('main-content').style.display = 'flex';
+                startDino();
             }
         });
 
-        // 2. Logica pentru Hexagoane pe fundal
+        // --- 3. HEXAGON BACKGROUND ---
         const canvas = document.getElementById('bgCanvas');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        function drawHexagon(x, y, size) {
+        function drawHex(x, y, size) {
             ctx.beginPath();
             for (let i = 0; i < 6; i++) {
                 ctx.lineTo(x + size * Math.cos(i * Math.PI / 3), y + size * Math.sin(i * Math.PI / 3));
             }
             ctx.closePath();
-            ctx.strokeStyle = '#2e0059'; // Mov foarte închis pentru fundal
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#1a0033'; 
             ctx.stroke();
         }
+        for(let i=0; i<40; i++) drawHex(Math.random()*canvas.width, Math.random()*canvas.height, Math.random()*40+20);
 
-        // Generare hexagoane random
-        for(let i=0; i<30; i++) {
-            drawHexagon(
-                Math.random() * canvas.width, 
-                Math.random() * canvas.height, 
-                30 + Math.random() * 50
-            );
+        // --- 4. CHAT LOGIC ---
+        async function sendMsg() {
+            const input = document.getElementById('msgInput');
+            if(!input.value) return;
+            await supabase.from('mesaje').insert({ text: input.value });
+            input.value = '';
+        }
+
+        async function loadChat() {
+            const { data } = await supabase.from('mesaje').select('*').order('created_at', { ascending: true });
+            const win = document.getElementById('chat-window');
+            if(data) {
+                win.innerHTML = data.map(m => `<div class="msg">${m.text}</div>`).join('');
+                win.scrollTop = win.scrollHeight;
+            }
+        }
+
+        supabase.channel('custom-all-channel').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mesaje' }, () => loadChat()).subscribe();
+        loadChat();
+
+        // --- 5. DINO LOGIC ---
+        const dino = document.getElementById('dino');
+        const cactus = document.getElementById('cactus');
+
+        function dinoJump() {
+            if(!dino.classList.contains('jump-animation')) {
+                dino.classList.add('jump-animation');
+                setTimeout(() => dino.classList.remove('jump-animation'), 500);
+            }
+        }
+
+        function startDino() {
+            cactus.style.animation = "moveCactus 1.5s infinite linear";
+            setInterval(() => {
+                let dTop = parseInt(window.getComputedStyle(dino).getPropertyValue("top"));
+                let cLeft = parseInt(window.getComputedStyle(cactus).getPropertyValue("left"));
+                if(cLeft < 50 && cLeft > 20 && dTop >= 120) {
+                    alert("Sistem Compromis! Reîncărcare...");
+                    location.reload();
+                }
+            }, 10);
         }
     </script>
 </body>
