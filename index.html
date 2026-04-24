@@ -3,66 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <title>ArhiCore Chat</title>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-
-        // --- AICI TREBUIE SA PUI CONFIGURAREA TA ---
-        const firebaseConfig = {
-            apiKey: "AIza...",
-            authDomain: "arhi-core-chat.firebaseapp.com",
-            projectId: "arhi-core-chat",
-            storageBucket: "arhi-core-chat.appspot.com",
-            messagingSenderId: "...",
-            appId: "..."
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Functie trimitere
-        window.sendMessage = async () => {
-            const input = document.getElementById("messageInput");
-            if (input.value.trim() !== "") {
-                await addDoc(collection(db, "messages"), {
-                    text: input.value,
-                    createdAt: serverTimestamp()
-                });
-                input.value = "";
-            }
-        };
-
-        // Asculta mesajele in timp real
-        const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
-        onSnapshot(q, (snapshot) => {
-            const chatWindow = document.getElementById("chat-window");
-            chatWindow.innerHTML = ""; // Curata ecranul
-            snapshot.forEach((doc) => {
-                const msg = doc.data();
-                const div = document.createElement("div");
-                div.className = "message";
-                div.textContent = msg.text;
-                chatWindow.appendChild(div);
-            });
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-        });
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { background-color: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; height: 100vh; margin: 0; }
-        .chat-container { width: 400px; background: #1a1a1a; border: 2px solid #8a2be2; border-radius: 15px; display: flex; flex-direction: column; padding: 20px; height: 80vh; margin-top: 50px; }
-        h1 { text-align: center; color: #8a2be2; }
-        #chat-window { flex: 1; overflow-y: auto; margin-bottom: 10px; border-bottom: 1px solid #333; }
-        .message { margin-bottom: 10px; padding: 8px; background: #333; border-radius: 8px; }
+        body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; height: 100vh; margin: 0; }
+        .chat-container { width: 400px; background: #1a1a1a; border: 2px solid #8a2be2; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; height: 80vh; margin-top: 50px; }
+        h1 { color: #8a2be2; text-align: center; }
+        #chat-window { flex: 1; overflow-y: auto; margin-bottom: 10px; }
+        .message { padding: 8px; border-bottom: 1px solid #333; }
         input { padding: 10px; border-radius: 5px; border: 1px solid #8a2be2; background: #000; color: #fff; }
-        button { padding: 10px; background: #8a2be2; border: none; color: white; cursor: pointer; border-radius: 5px; }
+        button { padding: 10px; background: #8a2be2; border: none; color: white; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="chat-container">
         <h1>ArhiCore</h1>
         <div id="chat-window"></div>
-        <input type="text" id="messageInput" placeholder="Mesajul tau...">
-        <button onclick="sendMessage()">Trimite</button>
+        <input type="text" id="messageInput" placeholder="Scrie mesaj...">
+        <button onclick="trimiteMesaj()">Trimite</button>
     </div>
+
+    <script>
+        // --- AICI PUI DATELE TALE DE LA SUPABASE ---
+        const supabase = supabase.createClient('URL_UL_TAU_SUPABASE', 'CHEIA_TA_PUBLICA');
+
+        async function trimiteMesaj() {
+            const input = document.getElementById("messageInput");
+            const { error } = await supabase.from('mesaje').insert({ text: input.value });
+            if (!error) input.value = "";
+        }
+
+        async function incarcaIstoric() {
+            const { data } = await supabase.from('mesaje').select('*').order('created_at', { ascending: true });
+            const chatWindow = document.getElementById("chat-window");
+            chatWindow.innerHTML = "";
+            data.forEach(msg => {
+                chatWindow.innerHTML += `<div class="message">${msg.text}</div>`;
+            });
+        }
+
+        // Asculta in timp real (ca lumea sa vada mesajele instant)
+        supabase.channel('mesaje').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mesaje' }, payload => {
+            document.getElementById("chat-window").innerHTML += `<div class="message">${payload.new.text}</div>`;
+        }).subscribe();
+
+        incarcaIstoric();
+    </script>
 </body>
 </html>
