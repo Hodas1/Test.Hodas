@@ -1,84 +1,29 @@
-<!DOCTYPE html>
-<html lang="ro">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ArhiCore Chat</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body { background-color: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; height: 100vh; margin: 0; }
-        .chat-container { width: 400px; background: #1a1a1a; border: 2px solid #8a2be2; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; height: 80vh; margin-top: 50px; box-shadow: 0 0 15px #8a2be2; }
-        h1 { color: #8a2be2; text-align: center; margin-top: 0; }
-        #chat-window { flex: 1; overflow-y: auto; margin-bottom: 10px; border-bottom: 1px solid #333; padding: 5px; }
-        .message { padding: 8px; border-bottom: 1px solid #333; word-wrap: break-word; }
-        .input-area { display: flex; gap: 5px; }
-        input { flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #8a2be2; background: #000; color: #fff; }
-        button { padding: 10px 20px; background: #8a2be2; border: none; color: white; cursor: pointer; border-radius: 5px; font-weight: bold; }
-        button:hover { background: #6a1bb6; }
-    </style>
-</head>
-<body>
-
-    <div class="chat-container">
-        <h1>ArhiCore</h1>
-        <div id="chat-window"></div>
-        <div class="input-area">
-            <input type="text" id="messageInput" placeholder="Scrie ceva...">
-            <button onclick="trimiteMesaj()">Trimite</button>
-        </div>
+<div id="game-container" style="text-align: center; margin-top: 20px; color: #fff;">
+    <h3>Mini-Joc: ArhiClicker</h3>
+    <p>Scor: <span id="score">0</span></p>
+    <div id="game-area" style="width: 300px; height: 300px; border: 2px solid #8a2be2; margin: 0 auto; position: relative; background: #111;">
+        <div id="target" style="width: 40px; height: 40px; background-color: #8a2be2; border-radius: 5px; position: absolute; cursor: pointer; top: 130px; left: 130px;"></div>
     </div>
+</div>
 
-    <script>
-        // Configurare Supabase
-        const supabaseUrl = 'https://dvmjuzqozlkhwndjrvuo.supabase.co';
-        const supabaseKey = 'sb_publishable_4pbrCZ0UERI58_rbaEbNUQ_YDhEv_F7';
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+<script>
+    let score = 0;
+    const target = document.getElementById("target");
+    const scoreDisplay = document.getElementById("score");
+    const gameArea = document.getElementById("game-area");
 
-        const chatWindow = document.getElementById("chat-window");
+    target.addEventListener("click", () => {
+        score++;
+        scoreDisplay.textContent = score;
 
-        // Funcție trimitere
-        async function trimiteMesaj() {
-            const input = document.getElementById("messageInput");
-            if (input.value.trim() === "") return;
+        // Mută pătratul într-o poziție aleatorie în interiorul game-area
+        const maxX = gameArea.clientWidth - target.clientWidth;
+        const maxY = gameArea.clientHeight - target.clientHeight;
 
-            const { error } = await supabase.from('mesaje').insert({ text: input.value });
-            if (error) {
-                alert("Eroare la trimitere: " + error.message);
-            } else {
-                input.value = "";
-            }
-        }
+        const randomX = Math.floor(Math.random() * maxX);
+        const randomY = Math.floor(Math.random() * maxY);
 
-        // Încarcă istoricul la pornire
-        async function incarcaIstoric() {
-            const { data, error } = await supabase
-                .from('mesaje')
-                .select('*')
-                .order('created_at', { ascending: true });
-
-            if (data) {
-                chatWindow.innerHTML = "";
-                data.forEach(msg => {
-                    chatWindow.innerHTML += `<div class="message">${msg.text}</div>`;
-                });
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            }
-        }
-
-        // Ascultă mesaje noi în timp real
-        supabase.channel('public:mesaje')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mesaje' }, payload => {
-                chatWindow.innerHTML += `<div class="message">${payload.new.text}</div>`;
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            })
-            .subscribe();
-
-        // Trimitere cu Enter
-        document.getElementById("messageInput").addEventListener("keypress", (e) => {
-            if (e.key === "Enter") trimiteMesaj();
-        });
-
-        incarcaIstoric();
-    </script>
-</body>
-</html>
+        target.style.left = randomX + "px";
+        target.style.top = randomY + "px";
+    });
+</script>
