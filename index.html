@@ -3,194 +3,446 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ArhiCore - Protocol Black</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Joc Triunghi Mecatronic</title>
     <style>
-        /* CONFIGURAȚIE VIZUALĂ: ZERO ALB */
-        :root {
-            --bg-color: #000000;
-            --primary-purple: #8a2be2;
-            --dark-purple: #2e0059;
-            --text-gray: #a1a1a1; /* Gri stins în loc de alb */
-        }
-
-        body, html {
-            margin: 0; padding: 0;
-            background-color: var(--bg-color);
-            color: var(--text-gray);
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            color: #8a2be2;
             font-family: 'Courier New', Courier, monospace;
-            height: 100vh; overflow: hidden;
+            user-select: none;
         }
-
-        #bgCanvas {
-            position: fixed; top: 0; left: 0; z-index: -1;
+        #gameCanvas {
+            display: block;
         }
-
-        /* ECRAN START */
-        #splash {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 1000;
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            pointer-events: none;
         }
-        #splash h1 {
-            color: var(--primary-purple);
-            border: 2px solid var(--primary-purple);
-            padding: 20px; text-transform: uppercase;
-            letter-spacing: 5px; animation: pulse 2s infinite;
+        .stat {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #8a2be2;
         }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 5px var(--primary-purple); }
-            50% { box-shadow: 0 0 25px var(--primary-purple); }
-            100% { box-shadow: 0 0 5px var(--primary-purple); }
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 80px;
+            font-weight: bold;
+            text-align: center;
+            display: none;
+            text-shadow: 0 0 30px #8a2be2;
+            pointer-events: none;
+            z-index: 20;
         }
-
-        /* CONȚINUT PRINCIPAL */
-        #main-content {
-            display: none; height: 100vh;
-            flex-direction: column; align-items: center;
-            padding: 20px; overflow-y: auto;
-        }
-
-        .container {
-            width: 90%; max-width: 500px;
-            background: rgba(10, 10, 10, 0.9);
-            border: 1px solid var(--primary-purple);
-            padding: 20px; margin-bottom: 20px;
-            box-shadow: 0 0 15px rgba(138, 43, 226, 0.2);
-        }
-
-        /* CHAT STYLE */
-        #chat-window {
-            height: 200px; overflow-y: auto;
-            border-bottom: 1px solid var(--dark-purple);
-            margin-bottom: 10px; padding: 5px;
-        }
-        .msg { border-left: 2px solid var(--primary-purple); padding-left: 8px; margin-bottom: 8px; }
-        input {
-            width: 70%; background: #000; border: 1px solid var(--dark-purple);
-            color: var(--primary-purple); padding: 10px;
-        }
-        button {
-            background: var(--primary-purple); border: none;
-            color: #000; padding: 10px; font-weight: bold; cursor: pointer;
-        }
-
-        /* DINO GAME STYLE */
-        #game {
-            width: 100%; height: 150px; border: 1px solid var(--dark-purple);
-            position: relative; overflow: hidden; background: #050505;
-        }
-        #dino { width: 30px; height: 30px; background: var(--primary-purple); position: absolute; bottom: 0; left: 20px; }
-        #cactus { width: 15px; height: 30px; background: var(--text-gray); position: absolute; bottom: 0; left: 100%; }
-        .jump-animation { animation: jump 0.5s linear; }
-        @keyframes jump { 0%, 100% { bottom: 0; } 50% { bottom: 80px; } }
-        @keyframes moveCactus { from { left: 100%; } to { left: -20px; } }
+        .red-text { color: #ff3333; text-shadow: 0 0 10px #ff3333; }
     </style>
 </head>
 <body>
 
-    <canvas id="bgCanvas"></canvas>
-
-    <div id="splash">
-        <h1>ArhiCore</h1>
-        <p style="color: var(--primary-purple);">APASĂ [ SPACE ] PENTRU ACTIVARE</p>
+    <div id="ui">
+        <div id="scoreDisplay" class="stat">SCOR: 0</div>
+        <div id="livesDisplay" class="stat">VIEȚI: 3</div>
+        <div id="levelDisplay" class="stat" style="font-size: 20px;">ARMĂ: LVL 1</div>
+        <div id="invincibleDisplay" class="stat" style="display:none; color: #ff00ff; text-shadow: 0 0 10px #ff00ff; margin-top: 20px;">[NEMURITOR ACTIVAT]</div>
     </div>
-
-    <div id="main-content">
-        <div class="container">
-            <h2 style="color: var(--primary-purple); margin-top:0;">Terminal Chat</h2>
-            <div id="chat-window"></div>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="msgInput" placeholder="Mesaj...">
-                <button onclick="sendMsg()">TRIMITE</button>
-            </div>
-        </div>
-
-        <div class="container">
-            <h2 style="color: var(--primary-purple); margin-top:0;">ArhiDino</h2>
-            <p style="font-size: 10px;">Click pe zona de joc pentru Salt</p>
-            <div id="game" onclick="dinoJump()">
-                <div id="dino"></div>
-                <div id="cactus"></div>
-            </div>
-        </div>
-    </div>
+    
+    <div id="message"></div>
+    <canvas id="gameCanvas"></canvas>
 
     <script>
-        // --- 1. SUPABASE CONFIG ---
-        const _URL = 'https://dvmjuzqozlkhwndjrvuo.supabase.co';
-        const _KEY = 'sb_publishable_4pbrCZ0UERI58_rbaEbNUQ_YDhEv_F7';
-        const supabase = supabase.createClient(_URL, _KEY);
-
-        // --- 2. START LOGIC (SPACE) ---
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && document.getElementById('splash').style.display !== 'none') {
-                document.getElementById('splash').style.display = 'none';
-                document.getElementById('main-content').style.display = 'flex';
-                startDino();
-            }
-        });
-
-        // --- 3. HEXAGON BACKGROUND ---
-        const canvas = document.getElementById('bgCanvas');
+        const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('scoreDisplay');
+        const livesEl = document.getElementById('livesDisplay');
+        const levelEl = document.getElementById('levelDisplay');
+        const invincEl = document.getElementById('invincibleDisplay');
+        const msgEl = document.getElementById('message');
+
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        function drawHex(x, y, size) {
-            ctx.beginPath();
-            for (let i = 0; i < 6; i++) {
-                ctx.lineTo(x + size * Math.cos(i * Math.PI / 3), y + size * Math.sin(i * Math.PI / 3));
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Input
+        const keys = {};
+        const mouse = { x: canvas.width/2, y: canvas.height/2, down: false };
+
+        window.addEventListener('keydown', (e) => { 
+            keys[e.key.toLowerCase()] = true; 
+            // Cheat code
+            if (e.key === '{') {
+                player.isGod = !player.isGod;
+                invincEl.style.display = player.isGod ? 'block' : 'none';
             }
-            ctx.closePath();
-            ctx.strokeStyle = '#1a0033'; 
-            ctx.stroke();
-        }
-        for(let i=0; i<40; i++) drawHex(Math.random()*canvas.width, Math.random()*canvas.height, Math.random()*40+20);
+        });
+        window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+        window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        window.addEventListener('mousedown', () => { mouse.down = true; });
+        window.addEventListener('mouseup', () => { mouse.down = false; });
 
-        // --- 4. CHAT LOGIC ---
-        async function sendMsg() {
-            const input = document.getElementById('msgInput');
-            if(!input.value) return;
-            await supabase.from('mesaje').insert({ text: input.value });
-            input.value = '';
-        }
+        // Joc State
+        let score = 0;
+        let lives = 3;
+        let gameOver = false;
+        let won = false;
+        let frame = 0;
+        let shakeTime = 0;
 
-        async function loadChat() {
-            const { data } = await supabase.from('mesaje').select('*').order('created_at', { ascending: true });
-            const win = document.getElementById('chat-window');
-            if(data) {
-                win.innerHTML = data.map(m => `<div class="msg">${m.text}</div>`).join('');
-                win.scrollTop = win.scrollHeight;
+        function shakeScreen() {
+            if (shakeTime > 0) {
+                const dx = (Math.random() - 0.5) * 20;
+                const dy = (Math.random() - 0.5) * 20;
+                ctx.translate(dx, dy);
+                shakeTime--;
+                return {x: dx, y: dy};
             }
+            return {x: 0, y: 0};
         }
 
-        supabase.channel('custom-all-channel').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mesaje' }, () => loadChat()).subscribe();
-        loadChat();
-
-        // --- 5. DINO LOGIC ---
-        const dino = document.getElementById('dino');
-        const cactus = document.getElementById('cactus');
-
-        function dinoJump() {
-            if(!dino.classList.contains('jump-animation')) {
-                dino.classList.add('jump-animation');
-                setTimeout(() => dino.classList.remove('jump-animation'), 500);
+        class Hexagon {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 50 + 20;
+                this.vx = (Math.random() - 0.5) * 1;
+                this.vy = (Math.random() - 0.5) * 1;
+                this.angle = Math.random() * Math.PI * 2;
+                this.vAngle = (Math.random() - 0.5) * 0.02;
             }
-        }
-
-        function startDino() {
-            cactus.style.animation = "moveCactus 1.5s infinite linear";
-            setInterval(() => {
-                let dTop = parseInt(window.getComputedStyle(dino).getPropertyValue("top"));
-                let cLeft = parseInt(window.getComputedStyle(cactus).getPropertyValue("left"));
-                if(cLeft < 50 && cLeft > 20 && dTop >= 120) {
-                    alert("Sistem Compromis! Reîncărcare...");
-                    location.reload();
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.angle += this.vAngle;
+                if (this.x > canvas.width + this.size) this.x = -this.size;
+                if (this.x < -this.size) this.x = canvas.width + this.size;
+                if (this.y > canvas.height + this.size) this.y = -this.size;
+                if (this.y < -this.size) this.y = canvas.height + this.size;
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    ctx.lineTo(this.size * Math.cos(i * Math.PI / 3), this.size * Math.sin(i * Math.PI / 3));
                 }
-            }, 10);
+                ctx.closePath();
+                ctx.strokeStyle = 'rgba(138, 43, 226, 0.15)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.restore();
+            }
         }
+
+        class Player {
+            constructor() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height / 2;
+                this.vx = 0;
+                this.vy = 0;
+                this.speed = 0.8;
+                this.friction = 0.92; // Fizică fluidă
+                this.radius = 20;
+                this.angle = 0;
+                this.fireRate = 15;
+                this.fireTimer = 0;
+                this.isGod = false;
+                this.invulnTimer = 0;
+            }
+            update() {
+                // Mișcare W A S D
+                if (keys['w']) this.vy -= this.speed;
+                if (keys['s']) this.vy += this.speed;
+                if (keys['a']) this.vx -= this.speed;
+                if (keys['d']) this.vx += this.speed;
+
+                this.vx *= this.friction;
+                this.vy *= this.friction;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Limite ecran
+                if (this.x < this.radius) { this.x = this.radius; this.vx *= -0.5; }
+                if (this.x > canvas.width - this.radius) { this.x = canvas.width - this.radius; this.vx *= -0.5; }
+                if (this.y < this.radius) { this.y = this.radius; this.vy *= -0.5; }
+                if (this.y > canvas.height - this.radius) { this.y = canvas.height - this.radius; this.vy *= -0.5; }
+
+                // Rotație spre mouse
+                this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+
+                if (this.invulnTimer > 0) this.invulnTimer--;
+
+                // Tragere / Upgrade-uri
+                if (this.fireTimer > 0) this.fireTimer--;
+                if (mouse.down && this.fireTimer <= 0) {
+                    this.shoot();
+                }
+            }
+            shoot() {
+                let lvl = score < 25 ? 1 : score < 50 ? 2 : score < 75 ? 3 : 4;
+                levelEl.innerText = `ARMĂ: LVL ${lvl}`;
+                
+                this.fireTimer = lvl === 4 ? 8 : 15; // Rapid fire la nivel maxim
+
+                const speed = 15;
+                if (lvl === 1 || lvl === 4) {
+                    projectiles.push(new Projectile(this.x, this.y, Math.cos(this.angle) * speed, Math.sin(this.angle) * speed));
+                }
+                if (lvl === 2) {
+                    projectiles.push(new Projectile(this.x, this.y, Math.cos(this.angle - 0.15) * speed, Math.sin(this.angle - 0.15) * speed));
+                    projectiles.push(new Projectile(this.x, this.y, Math.cos(this.angle + 0.15) * speed, Math.sin(this.angle + 0.15) * speed));
+                }
+                if (lvl >= 3) {
+                    projectiles.push(new Projectile(this.x, this.y, Math.cos(this.angle) * speed, Math.sin(this.angle) * speed));
+                    projectiles.push(new Projectile(this.x, this.y, Math.cos(this.angle - 0.25) * speed, Math.sin(this.angle - 0.25) * speed));
+                    projectiles.push(new Projectile(this.x, this.y, Math.cos(this.angle + 0.25) * speed, Math.sin(this.angle + 0.25) * speed));
+                }
+            }
+            draw() {
+                if (this.invulnTimer > 0 && frame % 10 < 5 && !this.isGod) return; // Efect de clipire
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.beginPath();
+                ctx.moveTo(30, 0); // Vârf
+                ctx.lineTo(-15, 20);
+                ctx.lineTo(-15, -20);
+                ctx.closePath();
+                ctx.fillStyle = this.isGod ? '#ff00ff' : '#8a2be2';
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = this.isGod ? '#ff00ff' : '#8a2be2';
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, vx, vy) {
+                this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+                this.radius = 4;
+                this.life = 100;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                this.life--;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#da70d6';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#da70d6';
+                ctx.fill();
+            }
+        }
+
+        class Rock {
+            constructor() {
+                let side = Math.floor(Math.random() * 4);
+                if (side === 0) { this.x = Math.random() * canvas.width; this.y = -50; }
+                else if (side === 1) { this.x = canvas.width + 50; this.y = Math.random() * canvas.height; }
+                else if (side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + 50; }
+                else { this.x = -50; this.y = Math.random() * canvas.height; }
+
+                this.radius = Math.random() * 20 + 20;
+                let speed = Math.random() * 2 + 1 + (score * 0.05); // Se mișcă mai repede cu cât crește scorul
+                let angle = Math.atan2(player.y - this.y, player.x - this.x) + (Math.random() - 0.5);
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                
+                this.points = [];
+                let pointsNum = 7 + Math.random() * 5;
+                for (let i = 0; i < pointsNum; i++) {
+                    this.points.push((Math.random() * 0.4 + 0.8) * this.radius);
+                }
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.beginPath();
+                for (let i = 0; i < this.points.length; i++) {
+                    let angle = (i / this.points.length) * Math.PI * 2;
+                    let r = this.points[i];
+                    ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+                }
+                ctx.closePath();
+                ctx.fillStyle = '#110000';
+                ctx.strokeStyle = '#ff3333';
+                ctx.lineWidth = 3;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#ff0000';
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                this.vx = (Math.random() - 0.5) * 10;
+                this.vy = (Math.random() - 0.5) * 10;
+                this.life = 30 + Math.random() * 20;
+                this.color = color;
+                this.size = Math.random() * 4 + 1;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                this.life--;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.life / 50;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        const player = new Player();
+        const projectiles = [];
+        const rocks = [];
+        const particles = [];
+        const hexagons = Array.from({length: 30}, () => new Hexagon());
+
+        function createExplosion(x, y, color) {
+            for(let i=0; i<20; i++) particles.push(new Particle(x, y, color));
+        }
+
+        function checkCollisions() {
+            // Proiectil vs Piatră
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                for (let j = rocks.length - 1; j >= 0; j--) {
+                    let p = projectiles[i];
+                    let r = rocks[j];
+                    if (!p || !r) continue;
+                    let dist = Math.hypot(p.x - r.x, p.y - r.y);
+                    if (dist < p.radius + r.radius) {
+                        createExplosion(r.x, r.y, '#ff3333');
+                        projectiles.splice(i, 1);
+                        rocks.splice(j, 1);
+                        score++;
+                        scoreEl.innerText = `SCOR: ${score}`;
+                        shakeTime = 3; // Micro shake
+                        break;
+                    }
+                }
+            }
+
+            // Jucător vs Piatră (Efect Dramatic & Knockback)
+            for (let j = rocks.length - 1; j >= 0; j--) {
+                let r = rocks[j];
+                let dist = Math.hypot(player.x - r.x, player.y - r.y);
+                if (dist < player.radius + r.radius - 5) { // Marjă mică de iertare
+                    // Knockback aplicat mereu
+                    let angle = Math.atan2(player.y - r.y, player.x - r.x);
+                    player.vx = Math.cos(angle) * 25; // Împingere puternică
+                    player.vy = Math.sin(angle) * 25;
+
+                    if (!player.isGod && player.invulnTimer <= 0) {
+                        lives--;
+                        livesEl.innerText = `VIEȚI: ${lives}`;
+                        livesEl.classList.add('red-text');
+                        setTimeout(() => livesEl.classList.remove('red-text'), 500);
+                        player.invulnTimer = 60; // 1 secundă invulnerabilitate
+                        shakeTime = 15; // Screen shake puternic
+                        createExplosion(player.x, player.y, '#8a2be2');
+                        
+                        if (lives <= 0) {
+                            gameOver = true;
+                            msgEl.innerHTML = "AI MURIT<br><span style='font-size:30px'>Apasă F5 pentru reset</span>";
+                            msgEl.style.display = 'block';
+                            msgEl.style.color = '#ff3333';
+                        }
+                    }
+                }
+            }
+        }
+
+        function loop() {
+            if (gameOver) return;
+
+            // Verificare Win Condition
+            if (score >= 100 && !won) {
+                won = true;
+                msgEl.innerText = "ESTI GAY";
+                msgEl.style.display = 'block';
+                // Lăsăm jocul să ruleze pe fundal, doar că afișăm textul mare pe mijloc
+            }
+
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Screen Shake
+            ctx.save();
+            const offset = shakeScreen();
+
+            // Background Hexagoane
+            hexagons.forEach(hex => { hex.update(); hex.draw(); });
+
+            // Jucător
+            player.update();
+            player.draw();
+
+            // Proiectile
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let p = projectiles[i];
+                p.update();
+                p.draw();
+                if (p.life <= 0 || p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+                    projectiles.splice(i, 1);
+                }
+            }
+
+            // Spawn Pietre
+            if (frame % Math.max(20, 60 - Math.floor(score / 2)) === 0) {
+                rocks.push(new Rock());
+            }
+
+            // Pietre
+            for (let i = rocks.length - 1; i >= 0; i--) {
+                let r = rocks[i];
+                r.update();
+                r.draw();
+                // Ștergem pietrele care au trecut mult de ecran
+                if (r.x < -200 || r.x > canvas.width + 200 || r.y < -200 || r.y > canvas.height + 200) {
+                    rocks.splice(i, 1);
+                }
+            }
+
+            // Particule
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.update();
+                p.draw();
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            checkCollisions();
+
+            ctx.restore(); // Reset screen shake translation
+
+            frame++;
+            requestAnimationFrame(loop);
+        }
+
+        loop();
     </script>
 </body>
 </html>
