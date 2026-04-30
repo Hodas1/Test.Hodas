@@ -379,10 +379,22 @@
             if (gameOver) return;
 
             // Verificare Win Condition
-            if (score >= 100 && !won) {
+            if (score >= 200 && !won) {
                 won = true;
-                msgEl.innerText = "ESTI GAY";
+                msgEl.innerText = "ESTI gay";
                 msgEl.style.display = 'block';
+
+            if (score >= 110 && !won) {
+                msgEl.style.display = 'none';
+                             
+             if (score >= 100 && !won) {
+                won = true;
+                msgEl.innerText = "Te plictisesti ?";
+                msgEl.style.display = 'block';
+
+            if (score >= 210 && !won) {
+                msgEl.style.display = 'none';
+                
                 // Lăsăm jocul să ruleze pe fundal, doar că afișăm textul mare pe mijloc
             }
 
