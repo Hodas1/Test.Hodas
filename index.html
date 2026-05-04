@@ -1,89 +1,96 @@
 <!DOCTYPE html>
-<html lang="ro">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Joc Triunghi Mecatronic</title>
+    <title>Mechatronic Triangle: Odyssey & Boss Rush</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #000;
-            color: #8a2be2;
-            font-family: 'Courier New', Courier, monospace;
-            user-select: none;
+        body { margin: 0; overflow: hidden; background-color: #000; color: #8a2be2; font-family: 'Courier New', monospace; user-select: none; }
+        canvas { display: block; }
+        
+        #startMenu {
+            position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.9);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
         }
-        #gameCanvas {
-            display: block;
+        #startBtn {
+            padding: 20px 50px; font-size: 30px; background: none; border: 3px solid #8a2be2;
+            color: #8a2be2; cursor: pointer; box-shadow: 0 0 15px #8a2be2; font-family: inherit; transition: 0.3s;
         }
-        #ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 10;
-            pointer-events: none;
+        #startBtn:hover { background: #8a2be2; color: #000; box-shadow: 0 0 30px #8a2be2; }
+
+        #ui { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; display: none; }
+        .stat { font-size: 24px; font-weight: bold; margin-bottom: 5px; text-shadow: 0 0 10px #8a2be2; }
+        #hpContainer { width: 250px; height: 15px; border: 2px solid #8a2be2; margin-top: 5px; background: #110022; }
+        #hpBar { width: 100%; height: 100%; background: #ff3333; transition: width 0.3s; box-shadow: 0 0 10px #ff3333; }
+        
+        #abilityUI { margin-top: 20px; }
+        .ability { font-size: 14px; color: #444; margin-bottom: 5px; text-transform: uppercase; }
+        .unlocked { color: #00ffcc; text-shadow: 0 0 8px #00ffcc; }
+
+        #mapOverlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 80%; height: 80%; background: rgba(0,0,0,0.95); border: 2px solid #8a2be2;
+            display: none; z-index: 50; text-align: center;
         }
-        .stat {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            text-shadow: 0 0 10px #8a2be2;
-        }
-        #message {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 80px;
-            font-weight: bold;
-            text-align: center;
-            display: none;
-            text-shadow: 0 0 30px #8a2be2;
-            pointer-events: none;
-            z-index: 20;
-        }
-        .red-text { color: #ff3333; text-shadow: 0 0 10px #ff3333; }
     </style>
 </head>
 <body>
 
-    <div id="ui">
-        <div id="scoreDisplay" class="stat">SCOR: 0</div>
-        <div id="livesDisplay" class="stat">VIEȚI: 3</div>
-        <div id="levelDisplay" class="stat" style="font-size: 20px;">ARMĂ: LVL 1</div>
-        <div id="invincibleDisplay" class="stat" style="display:none; color: #ff00ff; text-shadow: 0 0 10px #ff00ff; margin-top: 20px;">[NEMURITOR ACTIVAT]</div>
+    <div id="startMenu">
+        <h1 style="font-size: 60px; text-shadow: 0 0 20px #8a2be2; margin-bottom: 20px;">MECHATRONIC TRIANGLE</h1>
+        <p style="margin-bottom: 40px; color: #aaa;">[W,A,S,D] Move | [MOUSE] Aim & Shoot | [M] Toggle Map</p>
+        <button id="startBtn" onclick="initGame()">START MISSION</button>
     </div>
-    
-    <div id="message"></div>
+
+    <div id="ui">
+        <div id="livesDisplay" class="stat">LIVES: 3</div>
+        <div id="hpContainer"><div id="hpBar"></div></div>
+        <div id="scoreDisplay" class="stat">POINTS: 0</div>
+        <div id="abilityUI">
+            <div id="ab-status" class="ability unlocked">Mission: Eliminate Bosses</div>
+        </div>
+    </div>
+
+    <div id="mapOverlay">
+        <h2 style="text-shadow: 0 0 10px #8a2be2;">GALAXY MAP</h2>
+        <canvas id="mCanvas"></canvas>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const scoreEl = document.getElementById('scoreDisplay');
-        const livesEl = document.getElementById('livesDisplay');
-        const levelEl = document.getElementById('levelDisplay');
-        const invincEl = document.getElementById('invincibleDisplay');
-        const msgEl = document.getElementById('message');
+        const mCanvas = document.getElementById('mCanvas');
+        const mCtx = mCanvas.getContext('2d');
 
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        // SETTINGS
+        const WORLD_SIZE = 5000;
+        let score = 0;
+        let lives = 3;
+        let maxHP = 100;
+        let currentHP = 100;
+        let gameOver = false;
+        let gameActive = false;
+        let frame = 0;
+        let shakeTime = 0;
+        let showMap = false;
+        let bossLevel = 1;
 
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
-
-        // Input
+        const camera = { x: 0, y: 0 };
+        const exploredSectors = new Set();
         const keys = {};
-        const mouse = { x: canvas.width/2, y: canvas.height/2, down: false };
+        const mouse = { x: 0, y: 0, down: false };
 
+
+        
+        // INPUTS
         window.addEventListener('keydown', (e) => { 
             keys[e.key.toLowerCase()] = true; 
-            // Cheat code
-            if (e.key === '{') {
-                player.isGod = !player.isGod;
-                invincEl.style.display = player.isGod ? 'block' : 'none';
+            if(e.key.toLowerCase() === 'm' && gameActive) {
+                showMap = !showMap;
+                document.getElementById('mapOverlay').style.display = showMap ? 'block' : 'none';
+                if(showMap) drawMap();
             }
         });
         window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
@@ -91,55 +98,24 @@
         window.addEventListener('mousedown', () => { mouse.down = true; });
         window.addEventListener('mouseup', () => { mouse.down = false; });
 
-        // Joc State
-        let score = 0;
-        let lives = 3;
-        let gameOver = false;
-        let won = false;
-        let frame = 0;
-        let shakeTime = 0;
-
-        function shakeScreen() {
-            if (shakeTime > 0) {
-                const dx = (Math.random() - 0.5) * 20;
-                const dy = (Math.random() - 0.5) * 20;
-                ctx.translate(dx, dy);
-                shakeTime--;
-                return {x: dx, y: dy};
-            }
-            return {x: 0, y: 0};
-        }
-
         class Hexagon {
             constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
+                this.x = (Math.random() - 0.5) * WORLD_SIZE;
+                this.y = (Math.random() - 0.5) * WORLD_SIZE;
                 this.size = Math.random() * 50 + 20;
-                this.vx = (Math.random() - 0.5) * 1;
-                this.vy = (Math.random() - 0.5) * 1;
                 this.angle = Math.random() * Math.PI * 2;
-                this.vAngle = (Math.random() - 0.5) * 0.02;
-            }
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-                this.angle += this.vAngle;
-                if (this.x > canvas.width + this.size) this.x = -this.size;
-                if (this.x < -this.size) this.x = canvas.width + this.size;
-                if (this.y > canvas.height + this.size) this.y = -this.size;
-                if (this.y < -this.size) this.y = canvas.height + this.size;
+                this.vAngle = (Math.random() - 0.5) * 0.01;
             }
             draw() {
                 ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(this.angle);
+                ctx.translate(this.x - camera.x, this.y - camera.y);
+                ctx.rotate(this.angle += this.vAngle);
                 ctx.beginPath();
                 for (let i = 0; i < 6; i++) {
                     ctx.lineTo(this.size * Math.cos(i * Math.PI / 3), this.size * Math.sin(i * Math.PI / 3));
                 }
                 ctx.closePath();
-                ctx.strokeStyle = 'rgba(138, 43, 226, 0.15)';
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(138, 43, 226, 0.1)';
                 ctx.stroke();
                 ctx.restore();
             }
@@ -147,301 +123,302 @@
 
         class Player {
             constructor() {
-                this.x = canvas.width / 2;
-                this.y = canvas.height / 2;
-                this.vx = 0;
-                this.vy = 0;
-                this.speed = 0.8;
-                this.friction = 0.92; // Fizică fluidă
-                this.radius = 20;
-                this.angle = 0;
-                this.fireRate = 15;
-                this.fireTimer = 0;
-                this.isGod = false;
-                this.invulnTimer = 0;
+                this.x = 0; this.y = 0; this.vx = 0; this.vy = 0;
+                this.speed = 0.8; this.friction = 0.92; this.radius = 20;
+                this.angle = 0; this.fireTimer = 0; this.invulnTimer = 0;
             }
             update() {
-                // Mișcare W A S D
                 if (keys['w']) this.vy -= this.speed;
                 if (keys['s']) this.vy += this.speed;
                 if (keys['a']) this.vx -= this.speed;
                 if (keys['d']) this.vx += this.speed;
+                this.vx *= this.friction; this.vy *= this.friction;
+                this.x += this.vx; this.y += this.vy;
 
-                this.vx *= this.friction;
-                this.vy *= this.friction;
-                this.x += this.vx;
-                this.y += this.vy;
+                // Map Tracking
+                let sector = `${Math.floor(this.x/400)},${Math.floor(this.y/400)}`;
+                exploredSectors.add(sector);
 
-                // Limite ecran
-                if (this.x < this.radius) { this.x = this.radius; this.vx *= -0.5; }
-                if (this.x > canvas.width - this.radius) { this.x = canvas.width - this.radius; this.vx *= -0.5; }
-                if (this.y < this.radius) { this.y = this.radius; this.vy *= -0.5; }
-                if (this.y > canvas.height - this.radius) { this.y = canvas.height - this.radius; this.vy *= -0.5; }
-
-                // Rotație spre mouse
-                this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
-
-                if (this.invulnTimer > 0) this.invulnTimer--;
-
-                // Tragere / Upgrade-uri
-                if (this.fireTimer > 0) this.fireTimer--;
-                if (mouse.down && this.fireTimer <= 0) {
-                    this.shoot();
+                // World Boundary
+                const dist = Math.hypot(this.x, this.y);
+                if (dist > WORLD_SIZE/2) {
+                    const a = Math.atan2(this.y, this.x);
+                    this.x = Math.cos(a) * (WORLD_SIZE/2);
+                    this.y = Math.sin(a) * (WORLD_SIZE/2);
                 }
+
+                this.angle = Math.atan2(mouse.y - (this.y - camera.y), mouse.x - (this.x - camera.x));
+                if (this.invulnTimer > 0) this.invulnTimer--;
+                if (this.fireTimer > 0) this.fireTimer--;
+                if (mouse.down && this.fireTimer <= 0) this.shoot();
             }
             shoot() {
-                let lvl = score < 25 ? 1 : score < 50 ? 2 : score < 75 ? 3 : 4;
-                levelEl.innerText = `ARMĂ: LVL ${lvl}`;
-                
-                this.fireTimer = lvl === 4 ? 8 : 15; // Rapid fire la nivel maxim
+                this.fireTimer = 12;
+                const s = 16;
+                projectiles.push(new Projectile(this.x, this.y, Math.cos(this.angle)*s, Math.sin(this.angle)*s, false));
+            }
+            draw() {
+                if (this.invulnTimer > 0 && frame % 10 < 5) return;
+                ctx.save();
+                ctx.translate(this.x - camera.x, this.y - camera.y);
+                ctx.rotate(this.angle);
+                ctx.beginPath();
+                ctx.moveTo(30, 0); ctx.lineTo(-15, 18); ctx.lineTo(-15, -18);
+                ctx.closePath();
+                ctx.fillStyle = '#8a2be2';
+                ctx.shadowBlur = 20; ctx.shadowColor = '#8a2be2';
+                ctx.fill();
+                ctx.restore();
+            }
+        }
 
-                const speed = 15;
-                if (lvl === 1 || lvl === 4) {
-                    projectiles.push(new Projectile(this.x, this.y, Math.cos(this.angle) * speed, Math.sin(this.angle) * speed));
+        class Rock {
+            constructor(isBoss = false, config = {}) {
+                this.isBoss = isBoss;
+                if(!isBoss) {
+                    let a = Math.random() * Math.PI * 2;
+                    this.x = player.x + Math.cos(a) * 900;
+                    this.y = player.y + Math.sin(a) * 900;
+                    this.radius = Math.random() * 20 + 20;
+                    this.vx = (Math.random()-0.5)*4; this.vy = (Math.random()-0.5)*4;
+                    this.hp = 1; this.color = '#ff3333';
+                } else {
+                    this.x = config.x; this.y = config.y;
+                    this.radius = config.radius; this.color = config.color;
+                    this.hp = config.hp; this.maxHP = config.hp;
+                    this.id = config.id; this.vx = 0; this.vy = 0;
+                    this.abilityTimer = 0;
                 }
-                if (lvl === 2) {
-                    projectiles.push(new Projectile(this.x, this.y, Math.cos(this.angle - 0.15) * speed, Math.sin(this.angle - 0.15) * speed));
-                    projectiles.push(new Projectile(this.x, this.y, Math.cos(this.angle + 0.15) * speed, Math.sin(this.angle + 0.15) * speed));
-                }
-                if (lvl >= 3) {
-                    projectiles.push(new Projectile(this.x, this.y, Math.cos(this.angle) * speed, Math.sin(this.angle) * speed));
-                    projectiles.push(new Projectile(this.x, this.y, Math.cos(this.angle - 0.25) * speed, Math.sin(this.angle - 0.25) * speed));
-                    projectiles.push(new Projectile(this.x, this.y, Math.cos(this.angle + 0.25) * speed, Math.sin(this.angle + 0.25) * speed));
+                this.points = [];
+                for(let i=0; i<(isBoss?15:8); i++) this.points.push((Math.random()*0.4+0.8)*this.radius);
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                if(this.isBoss) {
+                    this.abilityTimer++;
+                    // Boss 1: Triple Shot
+                    if(this.id === 1 && this.abilityTimer % 80 === 0) {
+                        for(let i=-1; i<=1; i++) {
+                            let a = Math.atan2(player.y - this.y, player.x - this.x) + (i*0.2);
+                            projectiles.push(new Projectile(this.x, this.y, Math.cos(a)*8, Math.sin(a)*8, true));
+                        }
+                    }
+                    // Boss 2: Follow + Teleport
+                    if(this.id === 2) {
+                        let a = Math.atan2(player.y - this.y, player.x - this.x);
+                        this.vx = Math.cos(a) * 2.5; this.vy = Math.sin(a) * 2.5;
+                        if(this.abilityTimer % 180 === 0) {
+                            createExplosion(this.x, this.y, this.color);
+                            this.x = player.x + (Math.random()-0.5)*500;
+                            this.y = player.y + (Math.random()-0.5)*500;
+                        }
+                    }
                 }
             }
             draw() {
-                if (this.invulnTimer > 0 && frame % 10 < 5 && !this.isGod) return; // Efect de clipire
-
                 ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(this.angle);
+                ctx.translate(this.x - camera.x, this.y - camera.y);
                 ctx.beginPath();
-                ctx.moveTo(30, 0); // Vârf
-                ctx.lineTo(-15, 20);
-                ctx.lineTo(-15, -20);
+                this.points.forEach((p, i) => {
+                    let a = (i/this.points.length)*Math.PI*2;
+                    ctx.lineTo(Math.cos(a)*p, Math.sin(a)*p);
+                });
                 ctx.closePath();
-                ctx.fillStyle = this.isGod ? '#ff00ff' : '#8a2be2';
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = this.isGod ? '#ff00ff' : '#8a2be2';
-                ctx.fill();
+                ctx.fillStyle = '#0a0011'; ctx.strokeStyle = this.color;
+                ctx.lineWidth = this.isBoss ? 5 : 2;
+                ctx.shadowBlur = 15; ctx.shadowColor = this.color;
+                ctx.fill(); ctx.stroke();
+                if(this.isBoss) {
+                    ctx.fillStyle = '#330000'; ctx.fillRect(-this.radius, -this.radius-25, this.radius*2, 6);
+                    ctx.fillStyle = 'red'; ctx.fillRect(-this.radius, -this.radius-25, (this.hp/this.maxHP)*this.radius*2, 6);
+                }
                 ctx.restore();
             }
         }
 
         class Projectile {
-            constructor(x, y, vx, vy) {
+            constructor(x, y, vx, vy, isEnemy) {
                 this.x = x; this.y = y; this.vx = vx; this.vy = vy;
-                this.radius = 4;
-                this.life = 100;
+                this.isEnemy = isEnemy; this.radius = isEnemy ? 8 : 4; this.life = 140;
             }
-            update() {
-                this.x += this.vx; this.y += this.vy;
-                this.life--;
-            }
+            update() { this.x += this.vx; this.y += this.vy; this.life--; }
             draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = '#da70d6';
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = '#da70d6';
+                ctx.beginPath(); ctx.arc(this.x - camera.x, this.y - camera.y, this.radius, 0, Math.PI*2);
+                ctx.fillStyle = this.isEnemy ? '#ff00ff' : '#00ffff'; 
+                ctx.shadowBlur = 10; ctx.shadowColor = this.fillStyle;
                 ctx.fill();
-            }
-        }
-
-        class Rock {
-            constructor() {
-                let side = Math.floor(Math.random() * 4);
-                if (side === 0) { this.x = Math.random() * canvas.width; this.y = -50; }
-                else if (side === 1) { this.x = canvas.width + 50; this.y = Math.random() * canvas.height; }
-                else if (side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + 50; }
-                else { this.x = -50; this.y = Math.random() * canvas.height; }
-
-                this.radius = Math.random() * 20 + 20;
-                let speed = Math.random() * 2 + 1 + (score * 0.05); // Se mișcă mai repede cu cât crește scorul
-                let angle = Math.atan2(player.y - this.y, player.x - this.x) + (Math.random() - 0.5);
-                this.vx = Math.cos(angle) * speed;
-                this.vy = Math.sin(angle) * speed;
-                
-                this.points = [];
-                let pointsNum = 7 + Math.random() * 5;
-                for (let i = 0; i < pointsNum; i++) {
-                    this.points.push((Math.random() * 0.4 + 0.8) * this.radius);
-                }
-            }
-            update() {
-                this.x += this.vx; this.y += this.vy;
-            }
-            draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.beginPath();
-                for (let i = 0; i < this.points.length; i++) {
-                    let angle = (i / this.points.length) * Math.PI * 2;
-                    let r = this.points[i];
-                    ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
-                }
-                ctx.closePath();
-                ctx.fillStyle = '#110000';
-                ctx.strokeStyle = '#ff3333';
-                ctx.lineWidth = 3;
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = '#ff0000';
-                ctx.fill();
-                ctx.stroke();
-                ctx.restore();
-            }
-        }
-
-        class Particle {
-            constructor(x, y, color) {
-                this.x = x; this.y = y;
-                this.vx = (Math.random() - 0.5) * 10;
-                this.vy = (Math.random() - 0.5) * 10;
-                this.life = 30 + Math.random() * 20;
-                this.color = color;
-                this.size = Math.random() * 4 + 1;
-            }
-            update() {
-                this.x += this.vx; this.y += this.vy;
-                this.life--;
-            }
-            draw() {
-                ctx.fillStyle = this.color;
-                ctx.globalAlpha = this.life / 50;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
-                ctx.fill();
-                ctx.globalAlpha = 1;
             }
         }
 
         const player = new Player();
-        const projectiles = [];
-        const rocks = [];
-        const particles = [];
-        const hexagons = Array.from({length: 30}, () => new Hexagon());
+        let projectiles = [], rocks = [], particles = [], bosses = [];
+        const hexagons = Array.from({length: 120}, () => new Hexagon());
 
-        function createExplosion(x, y, color) {
-            for(let i=0; i<20; i++) particles.push(new Particle(x, y, color));
+        // Initial Boss
+        bosses.push(new Rock(true, {id: 1, x: 1200, y: 500, color: '#888', radius: 100, hp: 500}));
+
+        function spawnNextBosses() {
+            for(let i=0; i<2; i++) {
+                let a = Math.random()*Math.PI*2;
+                bosses.push(new Rock(true, {
+                    id: 2, 
+                    x: player.x + Math.cos(a)*1200, 
+                    y: player.y + Math.sin(a)*1200, 
+                    color: '#00ccff', radius: 85, hp: 700
+                }));
+            }
         }
 
-        function checkCollisions() {
-            // Proiectil vs Piatră
-            for (let i = projectiles.length - 1; i >= 0; i--) {
-                for (let j = rocks.length - 1; j >= 0; j--) {
-                    let p = projectiles[i];
-                    let r = rocks[j];
-                    if (!p || !r) continue;
-                    let dist = Math.hypot(p.x - r.x, p.y - r.y);
-                    if (dist < p.radius + r.radius) {
-                        createExplosion(r.x, r.y, '#ff3333');
-                        projectiles.splice(i, 1);
-                        rocks.splice(j, 1);
-                        score++;
-                        scoreEl.innerText = `SCOR: ${score}`;
-                        shakeTime = 3; // Micro shake
-                        break;
-                    }
-                }
+        function createExplosion(x, y, color) {
+            for(let i=0; i<15; i++) {
+                particles.push({
+                    x, y, 
+                    vx: (Math.random()-0.5)*12, 
+                    vy: (Math.random()-0.5)*12, 
+                    life: 35, color
+                });
             }
+        }
 
-            // Jucător vs Piatră (Efect Dramatic & Knockback)
-            for (let j = rocks.length - 1; j >= 0; j--) {
-                let r = rocks[j];
-                let dist = Math.hypot(player.x - r.x, player.y - r.y);
-                if (dist < player.radius + r.radius - 5) { // Marjă mică de iertare
-                    // Knockback aplicat mereu
-                    let angle = Math.atan2(player.y - r.y, player.x - r.x);
-                    player.vx = Math.cos(angle) * 25; // Împingere puternică
-                    player.vy = Math.sin(angle) * 25;
+        function takeDamage(amt) {
+            if(player.invulnTimer > 0) return;
+            currentHP -= amt; player.invulnTimer = 60; shakeTime = 15;
+            createExplosion(player.x, player.y, '#8a2be2');
+            if(currentHP <= 0) {
+                lives--; currentHP = maxHP;
+                if(lives < 0) { alert("GAME OVER"); location.reload(); }
+            }
+        }
 
-                    if (!player.isGod && player.invulnTimer <= 0) {
-                        lives--;
-                        livesEl.innerText = `VIEȚI: ${lives}`;
-                        livesEl.classList.add('red-text');
-                        setTimeout(() => livesEl.classList.remove('red-text'), 500);
-                        player.invulnTimer = 60; // 1 secundă invulnerabilitate
-                        shakeTime = 15; // Screen shake puternic
-                        createExplosion(player.x, player.y, '#8a2be2');
-                        
-                        if (lives <= 0) {
-                            gameOver = true;
-                            msgEl.innerHTML = "AI MURIT<br><span style='font-size:30px'>Apasă F5 pentru reset</span>";
-                            msgEl.style.display = 'block';
-                            msgEl.style.color = '#ff3333';
-                        }
-                    }
-                }
+        function drawMap() {
+            mCanvas.width = 600; mCanvas.height = 600;
+            mCtx.fillStyle = '#050011'; mCtx.fillRect(0,0,600,600);
+            const s = 600 / WORLD_SIZE;
+            const center = 300;
+            exploredSectors.forEach(sec => {
+                let [sx, sy] = sec.split(',').map(Number);
+                mCtx.fillStyle = '#110033';
+                mCtx.fillRect(center + sx*400*s, center + sy*400*s, 400*s, 400*s);
+            });
+            mCtx.fillStyle = '#8a2be2';
+            mCtx.beginPath(); mCtx.arc(center + player.x*s, center + player.y*s, 6, 0, Math.PI*2); mCtx.fill();
+            bosses.forEach(b => {
+                mCtx.fillStyle = b.color;
+                mCtx.beginPath(); mCtx.arc(center + b.x*s, center + b.y*s, 5, 0, Math.PI*2); mCtx.fill();
+            });
+        }
+
+        function initGame() {
+            gameActive = true;
+            document.getElementById('startMenu').style.display = 'none';
+            document.getElementById('ui').style.display = 'block';
+            loop();
+        }
+        
+        function spawnNextBosses() {
+            if (bossLevel === 1) { // Spawnăm boșii de nivel 2 doar o dată
+                bossLevel = 2;
+                for(let i=0; i<2; i++) {
+                    let a = Math.random() * Math.PI * 2;
+                 bosses.push(new Rock(true, {
+                  id: 2, 
+                  x: player.x + Math.cos(a) * 1200, 
+                 y: player.y + Math.sin(a) * 1200, 
+                   color: '#00ccff', radius: 85, hp: 700
+                }));
+            }
+            document.getElementById('ab-status').innerText = "Mission: Final Bosses";
+            } else {
+               // Dacă bossLevel este deja 2 și au murit toți, ai câștigat
+                document.getElementById('ab-status').innerText = "MISSION ACCOMPLISHED!";
+                document.getElementById('ab-status').style.color = "#00ffcc";
+                document.getElementById('ab-status').style.textShadow = "0 0 8px #00ffcc";
             }
         }
 
         function loop() {
-            if (gameOver) return;
+            if(gameOver) return;
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            
+            camera.x += (player.x - canvas.width/2 - camera.x) * 0.1;
+            camera.y += (player.y - canvas.height/2 - camera.y) * 0.1;
 
-            // Verificare Win Condition
-            if (score >= 200 && !won) {
-                won = true;
-                msgEl.innerText = "ESTI gay";
-                msgEl.style.display = 'block';
-            }
-
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Screen Shake
+            ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width, canvas.height);
+            
             ctx.save();
-            const offset = shakeScreen();
+            if(shakeTime > 0) { 
+                ctx.translate((Math.random()-0.5)*15, (Math.random()-0.5)*15); 
+                shakeTime--; 
+            }
 
-            // Background Hexagoane
-            hexagons.forEach(hex => { hex.update(); hex.draw(); });
+            hexagons.forEach(h => h.draw());
+            player.update(); player.draw();
 
-            // Jucător
-            player.update();
-            player.draw();
+            if(frame % 70 === 0) rocks.push(new Rock());
 
-            // Proiectile
-            for (let i = projectiles.length - 1; i >= 0; i--) {
-                let p = projectiles[i];
-                p.update();
-                p.draw();
-                if (p.life <= 0 || p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
-                    projectiles.splice(i, 1);
+            // Rocks
+            for(let i=rocks.length-1; i>=0; i--) {
+                rocks[i].update(); rocks[i].draw();
+                if(Math.hypot(player.x - rocks[i].x, player.y - rocks[i].y) < player.radius + rocks[i].radius) {
+                    takeDamage(20); rocks.splice(i, 1);
                 }
             }
 
-            // Spawn Pietre
-            if (frame % Math.max(20, 60 - Math.floor(score / 2)) === 0) {
-                rocks.push(new Rock());
-            }
-
-            // Pietre
-            for (let i = rocks.length - 1; i >= 0; i--) {
-                let r = rocks[i];
-                r.update();
-                r.draw();
-                // Ștergem pietrele care au trecut mult de ecran
-                if (r.x < -200 || r.x > canvas.width + 200 || r.y < -200 || r.y > canvas.height + 200) {
-                    rocks.splice(i, 1);
+            // Bosses
+            for(let i=bosses.length-1; i>=0; i--) {
+                let b = bosses[i]; b.update(); b.draw();
+                if(Math.hypot(player.x - b.x, player.y - b.y) < player.radius + b.radius) {
+                    takeDamage(35);
+                    let ang = Math.atan2(player.y - b.y, player.x - b.x);
+                    player.vx = Math.cos(ang) * 25; player.vy = Math.sin(ang) * 25;
                 }
             }
 
-            // Particule
-            for (let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.update();
-                p.draw();
-                if (p.life <= 0) particles.splice(i, 1);
+            // Projectiles
+            for(let i=projectiles.length-1; i>=0; i--) {
+                let p = projectiles[i]; p.update(); p.draw();
+                if(!p.isEnemy) {
+                    rocks.forEach((r, ri) => {
+                        if(Math.hypot(p.x - r.x, p.y - r.y) < r.radius) {
+                            createExplosion(r.x, r.y, r.color);
+                            rocks.splice(ri, 1); projectiles.splice(i, 1); score += 10;
+                        }
+                    });
+                    bosses.forEach((b, bi) => {
+                        if(Math.hypot(p.x - b.x, p.y - b.y) < b.radius) {
+                            b.hp -= 15; projectiles.splice(i, 1);
+                            if(b.hp <= 0) {
+                                createExplosion(b.x, b.y, b.color);
+                                bosses.splice(bi, 1); score += 1000;
+                                if(bosses.length === 0) spawnNextBosses();
+                            }
+                        }
+                    });
+                } else if(Math.hypot(p.x - player.x, p.y - player.y) < player.radius) {
+                    takeDamage(15); projectiles.splice(i, 1);
+                }
+                if(p.life <= 0) projectiles.splice(i, 1);
             }
 
-            checkCollisions();
+            // Particles
+            for(let i=particles.length-1; i>=0; i--) {
+                let pt = particles[i]; pt.x += pt.vx; pt.y += pt.vy; pt.life--;
+                ctx.fillStyle = pt.color; ctx.globalAlpha = pt.life/35;
+                ctx.fillRect(pt.x - camera.x, pt.y - camera.y, 3, 3);
+                if(pt.life <= 0) particles.splice(i, 1);
+            }
+            
+            ctx.restore();
+            ctx.globalAlpha = 1;
 
-            ctx.restore(); // Reset screen shake translation
-
+            // UI Update
+            document.getElementById('scoreDisplay').innerText = `POINTS: ${score}`;
+            document.getElementById('livesDisplay').innerText = `LIVES: ${lives}`;
+            document.getElementById('hpBar').style.width = (currentHP/maxHP)*100 + "%";
+            
             frame++;
             requestAnimationFrame(loop);
         }
-
-        loop();
     </script>
 </body>
 </html>
